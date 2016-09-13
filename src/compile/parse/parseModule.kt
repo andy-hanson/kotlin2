@@ -4,7 +4,10 @@ import u.*
 import ast.*
 import compile.lex.*
 
-internal fun Lexer.parseModule(): Module {
+fun parseModule(source: Input): Module =
+	Lexer(source).parseModule()
+
+private fun Lexer.parseModule(): Module {
 	val (start, next) = posNext()
 	val (imports, newStartNext) =
 		when (next) {
@@ -18,11 +21,9 @@ internal fun Lexer.parseModule(): Module {
 		}
 
 	var (declStart, declNext) = newStartNext
-
-	val decls = build<Decl> { add ->
-		while (declNext != Token.EOF) {
-			val decl = parseDecl(declStart, declNext)
-			add(decl)
+	val decls = build<Decl> {
+		while (declNext !== Token.EOF) {
+			add(parseDecl(declStart, declNext))
 			declStart = curPos()
 			declNext = nextToken()
 		}
@@ -49,7 +50,7 @@ private fun Lexer.parseImports(): Arr<Imports> =
 		Pair(imports, shouldContinue)
 	}
 
-//move
+//TODO:move
 fun<T> count(f: Thunk<T?>): Pair<Int, T> {
 	var n = 0
 	while (true) {
@@ -91,11 +92,11 @@ private fun Lexer.parseImportPathAndFirstImport(start: Pos, next: Token): Pair<I
 				else -> unexpected(start, next)
 			}
 		}
-
+	val namesPath = Path(names)
 	val path =
 		when (nLeadingDots) {
-			0 -> ImportPath.Global(names)
-			else -> ImportPath.Relative(RelPath(nLeadingDots, names))
+			0 -> ImportPath.Global(namesPath)
+			else -> ImportPath.Relative(RelPath(nLeadingDots, namesPath))
 		}
 
 	return Pair(path, firstImport)

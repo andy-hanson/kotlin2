@@ -11,12 +11,13 @@ private sealed class TyOrNon {
 	data class NonTy(val token: Token) : TyOrNon()
 }
 
-internal fun Lexer.parseTyFree(): Triple<Ty, Pos, Token> {
+internal fun Lexer.parseTyFree(): ParseTyFreeResult {
 	val (start, next) = posNext()
-	return freeWithStart(start, next)
+	return parseTyFreeWithStart(start, next)
 }
 
-private fun Lexer.freeWithStart(start: Pos, next: Token): Triple<Ty, Pos, Token> {
+data class ParseTyFreeResult(val ty: Ty, val pos: Pos, val next: Token)
+internal fun Lexer.parseTyFreeWithStart(start: Pos, next: Token): ParseTyFreeResult {
 	val first = run {
 		val part = parsePart(start, next)
 		when (part) {
@@ -46,10 +47,10 @@ private fun Lexer.freeWithStart(start: Pos, next: Token): Triple<Ty, Pos, Token>
 			first
 		else
 			Ty.Inst(locFrom(start), first, restParts)
-	return Triple(ty, nextStart, nextNext)
+	return ParseTyFreeResult(ty, nextStart, nextNext)
 }
 
-internal fun Lexer.parseTyNameOrGeneric(): FnHead {
+internal fun Lexer.parseTyNameOrGeneric(): Fn.Head {
 	val name = parseTyName()
 	val params =
 		buildUntilNull {
@@ -65,9 +66,9 @@ internal fun Lexer.parseTyNameOrGeneric(): FnHead {
 		}
 
 	return if (params.isEmpty)
-		FnHead.Plain(name)
+		Fn.Head.Plain(name)
 	else
-		FnHead.Generic(name, params)
+		Fn.Head.Generic(name, params)
 }
 
 
@@ -85,17 +86,17 @@ private fun Lexer.parsePart(start: Pos, next: Token): TyOrNon =
 		else -> TyOrNon.NonTy(next)
 	}
 
-private fun Lexer.parseGenInst(): Arr<Ty> =
-	buildUntilNull {
+internal fun Lexer.parseGenInst(): Arr<Ty> =
+	buildUntilNull<Ty> {
 		val (start, next) = posNext()
 		when (next) {
 			Token.Rbracket -> null
-			else -> inlineWithStart(start, next)
+			else -> parseTyInlineWithStart(start, next)
 		}
 	}
 
 //TODO:KILL
-private fun Lexer.inlineWithStart(start: Pos, next: Token): Ty {
+internal fun Lexer.parseTyInlineWithStart(start: Pos, next: Token): Ty {
 	val part = parsePart(start, next)
 	return when (part) {
 		is TyOrNon.Ty -> part.ty
@@ -105,5 +106,5 @@ private fun Lexer.inlineWithStart(start: Pos, next: Token): Ty {
 
 private fun Lexer.inline(): Ty {
 	val (start, next) = posNext()
-	return inlineWithStart(start, next)
+	return parseTyInlineWithStart(start, next)
 }

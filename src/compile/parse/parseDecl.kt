@@ -29,8 +29,8 @@ private fun Lexer.parseRt(start: Pos): DeclTy {
 	}
 	val loc = locFrom(start)
 	return when (head) {
-		is FnHead.Plain -> Rt(loc, head.name, props)
-		is FnHead.Generic -> GenRt(loc, head.name, head.params, props)
+		is Fn.Head.Plain -> Rt(loc, head.name, props)
+		is Fn.Head.Generic -> GenRt(loc, head.name, head.params, props)
 	}
 }
 
@@ -39,8 +39,8 @@ private fun Lexer.parseVt(start: Pos): DeclTy {
 	val tys = buildLoop(this::parseTyThenNewlineOrDedent)
 	val loc = locFrom(start)
 	return when (head) {
-		is FnHead.Plain -> Vt(loc, head.name, tys)
-		is FnHead.Generic -> GenVt(loc, head.name, head.params, tys)
+		is Fn.Head.Plain -> Vt(loc, head.name, tys)
+		is Fn.Head.Generic -> GenVt(loc, head.name, head.params, tys)
 	}
 }
 
@@ -49,8 +49,8 @@ private fun Lexer.parseFt(start: Pos): DeclTy {
 	val signature = parseSignatureThen(Token.Dedent)
 	val loc = locFrom(start)
 	return when (head) {
-		is FnHead.Plain -> Ft(loc, head.name, signature)
-		is FnHead.Generic -> GenFt(loc, head.name, head.params, signature)
+		is Fn.Head.Plain -> Ft(loc, head.name, signature)
+		is Fn.Head.Generic -> GenFt(loc, head.name, head.params, signature)
 	}
 }
 
@@ -64,11 +64,6 @@ private fun Lexer.parseTyThenNewlineOrDedent(): Pair<Ty, Bool> {
 	})
 }
 
-
-
-
-
-
 private fun Lexer.parseFn(start: Pos): Fn {
 	val head = parseFnHead()
 	val signature = parseSignatureThen(Token.Indent)
@@ -76,11 +71,11 @@ private fun Lexer.parseFn(start: Pos): Fn {
 	return Fn(locFrom(start), head, signature, value)
 }
 
-private fun Lexer.parseFnHead(): FnHead {
+private fun Lexer.parseFnHead(): Fn.Head {
 	val (start, next) = posNext()
 	return when (next) {
 		is Token.Name ->
-			FnHead.Plain(next.name)
+			Fn.Head.Plain(next.name)
 		Token.Lbracket -> {
 			val name = parseName()
 			val params =
@@ -94,10 +89,9 @@ private fun Lexer.parseFnHead(): FnHead {
 					}
 				}
 			assert(!params.isEmpty)
-			FnHead.Generic(name, params)
+			Fn.Head.Generic(name, params)
 		}
-		else -> unexpected(start, next)
+		else ->
+			unexpected(start, next)
 	}
 }
-
-

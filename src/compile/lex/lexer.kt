@@ -4,15 +4,8 @@ import u.*
 import compile.err.*
 import ast.LiteralValue
 
-fun safeRead(source: Input): Char =
-	try {
-		source.readChar()
-	} catch (_: EndOfFile) {
-		'\u0000'
-	}
-
 class Lexer(private val source: Input) {
-	private var peek: Char = safeRead(source)
+	private var peek: Char = source.readChar()
 	private var pos: Pos = startPos
 	private var indent: Int = 0
 	// Number of Token.Dedent we have to output before continuing to read
@@ -28,61 +21,57 @@ class Lexer(private val source: Input) {
 	fun locFrom(start: Pos): Loc =
 		makeLoc(start, pos)
 
-	private fun incrPos(): Unit {
+	private fun incrPos() {
 		pos = pos.incr()
 	}
 
-	private fun safeRead(): Char =
-		safeRead(source)
+	private fun read(): Char =
+		source.readChar()
 
 	private fun readChar(): Char =
 		peek.apply {
-			peek = safeRead()
+			peek = read()
 			incrPos()
 		}
 
-	private fun skip(): Unit {
+	private fun skip() {
 		readChar()
 	}
 
-	private inline fun skipWhile(pred: Pred<Char>): Unit {
+	private inline fun skipWhile(pred: Pred<Char>) {
+		require(!pred(Input.EOF)) // Else this will be an infinite loop
 		if (pred(peek)) {
-			peek = try {
+			peek = run {
 				var ch: Char
 				do {
 					ch = source.readChar()
 					incrPos()
 				} while (pred(ch));
 				ch
-			} catch (_: EndOfFile) {
-				'\u0000'
 			}
 		}
 	}
 
-	private inline fun bufferWhile(addChar: Action<Char>, pred: Pred<Char>): Unit {
+	private inline fun bufferWhile(addChar: Action<Char>, pred: Pred<Char>) {
 		if (pred(peek)) {
 			addChar(peek);
 			// Returns the first char that's not skipped.
-			peek =
-				try {
-					var ch: Char
-					while (true) {
-						ch = source.readChar()
-						incrPos()
-						if (!pred(ch))
-							break
-						addChar(ch)
-					}
-					ch
+			peek = run {
+				//TODO:NEATER?
+				var ch: Char
+				while (true) {
+					ch = source.readChar()
+					incrPos()
+					if (!pred(ch))
+						break
+					addChar(ch)
 				}
-				catch (_: EndOfFile) {
-					'\u0000'
-				}
+				ch
+			}
 		}
 	}
 
-	private fun skipNewlines(): Unit =
+	private fun skipNewlines() =
 		skipWhile { it == '\n' }
 
 	data class QuotePart(val text: String, val isEndOfQuote: Bool)
@@ -198,7 +187,7 @@ class Lexer(private val source: Input) {
 	private fun takeNext(): Token {
 		val ch = readChar()
 		return when (ch) {
-			'\u0000' -> {
+			Input.EOF -> {
 				// Remember to dedent before finishing
 				if (indent != 0) {
 					indent--

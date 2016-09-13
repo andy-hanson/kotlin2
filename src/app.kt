@@ -2,29 +2,48 @@ import u.Arr
 import u.build
 import u.makeLoc
 
-fun<T> f(a: Arr<T>, t: T) =
-	a[0] == t
+import testU.*
+import u.*
 
-fun main(args: Array<String>) {
-	println("Hello \u0000 world!")
 
-	val a = build<Int> { add ->
-		add(1)
-		add(2)
-		add(3)
+class Point(val x: Int, val y: Int) : HasSexpr {
+	override fun toSexpr() = sexpr("Point") {
+		s(1)
+		s(2)
 	}
-	println(a)
 }
 
-val l = makeLoc(12, 34)
+class Rect(val p1: Point, val p2: Point): HasSexpr {
+	override fun toSexpr() = sexpr("Rect") {
+		s(p1)
+		s(p2)
+	}
+}
 
 /*
-sealed class E {
-	data class LocalDeclare(val loc: Loc, val name: u.Sym, val ty: Ty) : E()
-	sealed class Pattern {
-		data class Ignore(val loc: Loc)
-		data class Single(val declare: LocalDeclare)
-		data class Destruct(val loc: Loc, val patterns: u.Arr<Pattern>)
+sealed class J {
+
+
+	class L(val content: Arr<J>) : J() {
+		constructor(vararg content: J) : this(Arr.of(*content))
 	}
 }
 */
+
+
+fun main(args: Array<String>) {
+	/*
+	val p = Point(1, 2)
+	val r = Rect(p, p)
+	val s = sexpr(Arr.of(r, r, r))
+	val st = s.toString()
+	println(st)
+	*/
+
+	val path = Path.of("main.nz")
+	val s = TestU.lex(path)
+	println(s)
+	val ast = TestU.parse(path)
+	val ss = ast.toSexpr()
+	println(ss)
+}
