@@ -2,7 +2,7 @@ package ast
 
 import u.*
 
-class LocalDeclare(val loc: Loc, val name: Sym) : HasSexpr {
+data class LocalDeclare(val loc: Loc, val name: Sym) : HasSexpr {
 	override fun toSexpr() =
 		TODO()
 }
@@ -14,12 +14,12 @@ class TyParam(val loc: Loc, val name: Sym) : HasSexpr {
 sealed class Ty : HasSexpr {
 	abstract val loc: Loc
 
-	class Access(override val loc: Loc, val name: Sym) : Ty() {
+	data class Access(override val loc: Loc, val name: Sym) : Ty() {
 		override fun toString() = name.toString()
 		override fun toSexpr() =
 			Sexpr.S(name)
 	}
-	class Inst(override val loc: Loc, val instantiated: Ty, val tyArgs: Arr<Ty>) : Ty() {
+	data class Inst(override val loc: Loc, val instantiated: Ty, val tyArgs: Arr<Ty>) : Ty() {
 		override fun toString() =
 			"[$instantiated $tyArgs]"
 		override fun toSexpr() =
@@ -48,13 +48,6 @@ sealed class Pattern : HasSexpr {
 	};
 }
 
-enum class AtKind : HasSexpr {
-	Exact,
-	Convert;
-
-	override fun toSexpr() = sexpr(this.name)
-}
-
 class Parameter(val loc: Loc, val name: Sym, val ty: Ty) : HasSexpr {
 	override fun toString() =
 		"$name $ty"
@@ -73,11 +66,18 @@ sealed class Expr : HasSexpr {
 	abstract val loc: Loc
 }
 
-class At(override val loc: Loc, val kind: AtKind, val ty: Ty, val expr: Expr) : Expr() {
+data class At(override val loc: Loc, val kind: Kind, val ty: Ty, val expr: Expr) : Expr() {
 	override fun toString() =
 		"At($kind, $ty, $expr)"
 	override fun toSexpr() =
 		sexpr("At", kind, ty, expr)
+
+	enum class Kind : HasSexpr {
+		Exact,
+		Convert;
+
+		override fun toSexpr() = sexpr(this.name)
+	}
 }
 
 class ExprTy(val ty: Ty) : Expr() {
@@ -108,14 +108,14 @@ class Call(override val loc: Loc, val target: Expr, val args: Arr<Expr>) : Expr(
 }
 
 class Cs(override val loc: Loc, val cased: Expr, val parts: Arr<Part>) : Expr() {
-	class Part(val loc: Loc, val test: Test, val result: Expr) : HasSexpr {
+	data class Part(val loc: Loc, val test: Test, val result: Expr) : HasSexpr {
 		override fun toString() =
 			"Cs.Part($test, $result)"
 
 		override fun toSexpr() =
 			sexprTuple(test, result)
 	}
-	class Test(val loc: Loc, val testTy: Ty, val pattern: Pattern) : HasSexpr {
+	data class Test(val loc: Loc, val testTy: Ty, val pattern: Pattern) : HasSexpr {
 		override fun toString() =
 			"$testTy, $pattern"
 		override fun toSexpr() =
@@ -142,14 +142,14 @@ class Ts(override val loc: Loc, val parts: Arr<Part>, val elze: Expr) : Expr() {
 		sexpr("Ts", sexpr(parts), elze)
 }
 
-class GetProperty(override val loc: Loc, val target: Expr, val propertyName: Sym) : Expr() {
+data class GetProperty(override val loc: Loc, val target: Expr, val propertyName: Sym) : Expr() {
 	override fun toString() =
 		"GetProperty($target, $propertyName)"
 	override fun toSexpr() =
 		sexpr("GetProperty", target, propertyName)
 }
 
-class Lambda(override val loc: Loc, val signature: Signature, val body: Expr) : Expr() {
+data class Lambda(override val loc: Loc, val signature: Signature, val body: Expr) : Expr() {
 	override fun toString() =
 		"Lambda($signature, $body)"
 
@@ -164,7 +164,7 @@ class Let(override val loc: Loc, val assigned: Pattern, val value: Expr, val exp
 		sexpr("Let", sexprTuple(assigned, value), expr)
 }
 
-class List(override val loc: Loc, val parts: Arr<Expr>) : Expr() {
+data class List(override val loc: Loc, val parts: Arr<Expr>) : Expr() {
 	override fun toString() =
 		"List($parts)"
 	override fun toSexpr() = sexpr ("List") {
@@ -209,7 +209,7 @@ class Seq(override val loc: Loc, val first: Expr, val then: Expr) : Expr() {
 		sexpr("Seq", first, then)
 }
 
-class Partial(override val loc: Loc, val target: Expr, val args: Arr<Expr>) : Expr() {
+data class Partial(override val loc: Loc, val target: Expr, val args: Arr<Expr>) : Expr() {
 	override fun toString() =
 		"Partial($target, $args)"
 	override fun toSexpr() = sexpr("Partial") {
@@ -221,7 +221,7 @@ class Partial(override val loc: Loc, val target: Expr, val args: Arr<Expr>) : Ex
 
 // For string with no interpolations, Literal is used instead
 //TODO: above is silly, kill LiteralValue.Str and always use a quote
-class Quote(override val loc: Loc, val head: String, val parts: Arr<Part>) : Expr() {
+data class Quote(override val loc: Loc, val head: String, val parts: Arr<Part>) : Expr() {
 	class Part(val interpolated: Expr, val text: String) : HasSexpr {
 		override fun toString() =
 			"$interpolated, \"$text\""
@@ -239,14 +239,14 @@ class Quote(override val loc: Loc, val head: String, val parts: Arr<Part>) : Exp
 }
 
 
-class Check(override val loc: Loc, val checked: Expr) : Expr() {
+data class Check(override val loc: Loc, val checked: Expr) : Expr() {
 	override fun toString() =
 		"Check($checked)"
 	override fun toSexpr() =
 		sexpr("Check", checked)
 }
 
-class GenInst(override val loc: Loc, val instantiatedName: Sym, val args: Arr<Ty>) : Expr() {
+data class GenInst(override val loc: Loc, val instantiatedName: Sym, val args: Arr<Ty>) : Expr() {
 	override fun toString() =
 		"GenInst($instantiatedName, $args)"
 	override fun toSexpr() = sexpr("GenInst") {
@@ -258,13 +258,16 @@ class GenInst(override val loc: Loc, val instantiatedName: Sym, val args: Arr<Ty
 
 sealed class Decl : HasSexpr {
 	abstract val loc: Loc
+	abstract val name: Sym
 }
 
 sealed class DeclVal : Decl()
 
 class Fn(override val loc: Loc, val head: Head, val signature: Signature, val body: Expr) : DeclVal() {
 	sealed class Head : HasSexpr {
-		class Plain(val name: Sym) : Head() {
+		abstract val name: Sym
+
+		class Plain(override val name: Sym) : Head() {
 			override fun toString() =
 				name.toString()
 
@@ -272,7 +275,7 @@ class Fn(override val loc: Loc, val head: Head, val signature: Signature, val bo
 				Sexpr.S(name)
 		}
 
-		class Generic(val name: Sym, val params: Arr<TyParam>) : Head() {
+		data class Generic(override val name: Sym, val params: Arr<TyParam>) : Head() {
 			override fun toString() =
 				"[$name ${params.joinToString(" ")}]"
 
@@ -280,6 +283,9 @@ class Fn(override val loc: Loc, val head: Head, val signature: Signature, val bo
 				sexprTuple(Arr.cons(name, params))
 		}
 	}
+
+	override val name: Sym
+		get() = head.name
 
 	override fun toString() =
 		"fn $head $signature $body"
@@ -300,49 +306,49 @@ class Fn(override val loc: Loc, val head: Head, val signature: Signature, val bo
 
 sealed class DeclTy : Decl()
 
-class Rt(override val loc: Loc, val name: Sym, val properties: Arr<Property>) : DeclTy() {
+class Rt(override val loc: Loc, override val name: Sym, val properties: Arr<Property>) : DeclTy() {
 	override fun toString() =
 		TODO()
 	override fun toSexpr() =
 		TODO()
 }
 
-class Property(override val loc: Loc, val name: Sym, val ty: Ty) : DeclTy() {
+class Property(override val loc: Loc, override val name: Sym, val ty: Ty) : DeclTy() {
 	override fun toString() =
 		TODO()
 	override fun toSexpr() =
 		TODO()
 }
 
-class GenRt(override val loc: Loc, val name: Sym, val params: Arr<TyParam>, val properties: Arr<Property>) : DeclTy() {
+class GenRt(override val loc: Loc, override val name: Sym, val params: Arr<TyParam>, val properties: Arr<Property>) : DeclTy() {
 	override fun toString() =
 		TODO()
 	override fun toSexpr() =
 		TODO()
 }
 
-class Vt(override val loc: Loc, val name: Sym, val variants: Arr<Ty>) : DeclTy() {
+class Vt(override val loc: Loc, override val name: Sym, val variants: Arr<Ty>) : DeclTy() {
 	override fun toString() =
 		TODO()
 	override fun toSexpr() =
 		TODO()
 }
 
-class GenVt(override val loc: Loc, val name: Sym, val params: Arr<TyParam>, val variants: Arr<Ty>) : DeclTy() {
+class GenVt(override val loc: Loc, override val name: Sym, val params: Arr<TyParam>, val variants: Arr<Ty>) : DeclTy() {
 	override fun toString() =
 		TODO()
 	override fun toSexpr() =
 		TODO()
 }
 
-class Ft(override val loc: Loc, val name: Sym, val signature: Signature) : DeclTy() {
+class Ft(override val loc: Loc, override val name: Sym, val signature: Signature) : DeclTy() {
 	override fun toString() =
 		TODO()
 	override fun toSexpr() =
 		TODO()
 }
 
-class GenFt(override val loc: Loc, val name: Sym, val params: Arr<TyParam>, val signature: Signature) : DeclTy() {
+class GenFt(override val loc: Loc, override val name: Sym, val params: Arr<TyParam>, val signature: Signature) : DeclTy() {
 	override fun toString() =
 		TODO()
 	override fun toSexpr() =

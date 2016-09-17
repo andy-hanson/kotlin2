@@ -29,7 +29,7 @@ object TestU {
 			} catch (_: CompileError) {
 				throw Exception("No function named $name")
 			}
-		if (member !is ModuleMember.TypedV)
+		if (member !is ModuleMember.MemberV.TypedV)
 			throw Exception("$name is not a fn")
 		val f = member.v
 		if (f !is Fn.Declared)

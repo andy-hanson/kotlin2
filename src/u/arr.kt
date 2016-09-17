@@ -31,23 +31,6 @@ class Arr<out T> constructor(private val data: Array<out T>) : Iterable<T> {
 
 		inline fun<reified T> nil(): Arr<T> = empty()
 
-		inline fun<reified T> concat(a: Arr<T>, b: Arr<T>) =
-			Arr.init(a.size + b.size) { i ->
-				if (i < a.size)
-					a[i]
-				else
-					b[i - a.size]
-			}
-
-		inline fun<reified T> slice(arr: Arr<T>, start: Int, end: Int): Arr<T> {
-			require(start >= 0)
-			require(start <= end)
-			require(end <= arr.size)
-			return Arr.init(end - start) { i ->
-				arr[start + i]
-			}
-		}
-
 		inline fun<reified T> cons(first: T, arr: Arr<T>): Arr<T> =
 			Arr.init(arr.size + 1) { i ->
 				if (i == 0)
@@ -62,11 +45,6 @@ class Arr<out T> constructor(private val data: Array<out T>) : Iterable<T> {
 					arr[i]
 				else
 					last
-			}
-
-		inline fun<reified T> rtail(arr: Arr<T>): Arr<T> =
-			Arr.init(arr.size - 1) { i ->
-				arr[i]
 			}
 	}
 
@@ -101,7 +79,110 @@ class Arr<out T> constructor(private val data: Array<out T>) : Iterable<T> {
 		Arr.init<U>(size) { i ->
 			f(this[i])
 		}
+
+	val indexes: Iterable<Int> =
+		0..(size - 1)
+
+	inline fun<reified U> allZip(other: Arr<U>, f: (T, U) -> Bool): Bool {
+		for (i in indexes)
+			if (!f(this[i], other[i]))
+				return false
+		return true
+	}
+
+	inline fun findIndex(f: Pred<T>): Int? {
+		for (i in indexes)
+			if (f(this[i]))
+				return i
+		return null
+	}
+
+	inline fun<U> findMap(f: (T) -> U?): U? {
+		for (element in this) {
+			val res = f(element)
+			if (res != null)
+				return res
+		}
+		return null
+	}
+
+	fun<U> sameSize(other: Arr<U>): Bool =
+		size == other.size
+
+	inline fun<reified U> eachZip(other: Arr<U>, f: (T, U) -> Unit) {
+		require(sameSize(other))
+		for (i in indexes)
+			f(this[i], other[i])
+	}
+
+	inline fun<reified U, reified Res> zip(other: Arr<U>, crossinline f: (T, U) -> Res): Arr<Res> {
+		require(sameSize(other))
+		return Arr.init(size) { i ->
+			f(this[i], other[i])
+		}
+	}
+
+	inline fun <reified U, reified Res> partialZip(other: Arr<U>, crossinline f: (T, U) -> Res): Arr<Res> {
+		val nRemaining = size - other.size
+		require(nRemaining >= 0)
+		return Arr.init(other.size) { i ->
+			f(this[nRemaining + i], other[i])
+		}
+	}
+
+	fun single(): T {
+		require(size == 1)
+		return first
+	}
+
+	fun lazySlice(start: Int, end: Int): Iterator<T> {
+		val arr = this
+		return object: Iterator<T> {
+			var i = start
+
+			override fun hasNext() =
+				i != end
+
+			override fun next(): T =
+				returning (arr[i]) {
+					i++
+					assert(i <= end) // Or else someone forgot to call hasNext()
+				}
+		}
+	}
+
+	fun lazyDrop(start: Int) =
+		lazySlice(start, size)
+
+	fun lazyTail() =
+		lazyDrop(1)
 }
+
+
+inline fun<reified T> Arr<T>.concat(other: Arr<T>) =
+	Arr.init(size + other.size) { i ->
+		if (i < size)
+			this[i]
+		else
+			other[i - size]
+	}
+
+inline fun<reified T> Arr<T>.slice(start: Int, end: Int): Arr<T> {
+	require(start >= 0)
+	require(start <= end)
+	require(end <= size)
+	return Arr.init(end - start) { this[start + it] }
+}
+
+inline fun<reified T> Arr<T>.rtail(): Arr<T> =
+	rtailN(1)
+
+inline fun <reified T> Arr<T>.rtailN(n: Int): Arr<T> =
+	Arr.init(size - n) { this[it] }
+
+
+
+
 
 //TODO: ArrBuild.kt
 inline fun<reified T> build(f: ArrayBuilder<T>.() -> Unit): Arr<T> {
@@ -109,6 +190,21 @@ inline fun<reified T> build(f: ArrayBuilder<T>.() -> Unit): Arr<T> {
 	ArrayBuilder(l).f()
 	return Arr.from(l)
 }
+
+inline fun<reified T, reified U> build2(f: (Action<T>, Action<U>) -> Unit): Pair<Arr<T>, Arr<U>> {
+	val a = mutableListOf<T>()
+	val b = mutableListOf<U>()
+	f({ a.add(it) }, { b.add(it) })
+	return Pair(Arr.from(a), Arr.from(b))
+}
+
+inline fun<reified T, U> buildFromFirstAndMapTail(first: T, arr: Arr<U>, map: (U) -> T): Arr<T> =
+	build {
+		add(first)
+		val x = arr.drop(1)
+		for (element in arr.lazyTail())
+			add(map(element))
+	}
 
 class ArrayBuilder<T>(val l: MutableList<T>) {
 	fun add(t: T) {

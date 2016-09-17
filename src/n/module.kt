@@ -4,17 +4,13 @@ import compile.err.*
 import u.*
 
 class Module(
-	/** Content of the file when this module was read. This protects us against file changes. */
-	val fileContent: String,
 	/** Logical path, e.g. "a/b" */
 	val path: Path,
 	/** Actual resolved path, e.g. "a/b.nz" or "a/b/main.nz" */
 	val fullPath: Path,
 	//TODO:DOC
 	val imports: Imports) {
-
-	val members: ModuleMembers = TODO()
-	//val moduleIls:
+	var members: ModuleMembers by Late()
 
 	fun getExport(loc: Loc, name: Sym): ModuleMember =
 		members[name] ?: raise(loc, Err.ModuleHasNoMember(this, name))
@@ -28,13 +24,16 @@ typealias Imports = Lookup<Sym, Imported>
 //TODO: every modul_member should have a pointer to its module?
 class Imported(
 	/** Location of the import identified */
-	val importLoc: Loc,
+	val loc: Loc,
 	val path: RelPath,
 	val content: ModuleMember)
 
 sealed class ModuleMember {
 	class Ty(val ty: TyOrGen) : ModuleMember()
-	// TODO: fn values already carry their type with them, so can we represent this better?
-	class TypedV(val ty: TyOrGen, val v: V) : ModuleMember()
-	class MemberPy(val py: Py) : ModuleMember()
+	sealed class MemberV : ModuleMember() {
+		// TODO: fn values already carry their type with them, so can we represent this better?
+		data class TypedV(val ty: TyOrGen, val v: V) : MemberV()
+
+		class MemberPy(val py: Py) : MemberV()
+	}
 }

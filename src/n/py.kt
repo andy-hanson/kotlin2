@@ -1,5 +1,6 @@
 package n
 
+import compile.instantiateGenFt
 import u.*
 
 /** Polymorph */
@@ -26,6 +27,10 @@ data class Il(
 	val tys: Arr<Ty>,
 	/** The function backing this implementation. */
 	val fn: Fn
-)
+) {
+	//TODO: Eager? Lazy? But don't recreate it every time!!!
+	fun ft(): Ft =
+		instantiateGenFt(py.ty, tys)
+}
 
 

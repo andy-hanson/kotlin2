@@ -21,6 +21,7 @@ fun Pos.incr(): Pos =
 
 val startPos: Pos = 0
 val nilLoc: Loc = -1
+val zeroLoc: Loc = 0
 
 class LcPos(val line: Int, val column: Int)
 class LcLoc(val start: LcPos, val end: LcPos) {

@@ -8,16 +8,28 @@ import u.*
 class Compiler(private val io: FileInput) {
 	private var modules = hashMapOf<Path, Module>()
 
-	private fun<T> doWork(fullPath: Path, f: Thunk<T>): T {
+	private fun outputError(error: CompileError) {
+		val message = error.output(this::translateLoc)
+		System.err.println(message)
+	}
+
+	private fun<T> doWork(fullPath: Path, f: Thunk<T>): T =
 		try {
-			return f()
+			f()
 		} catch (error: CompileError) {
 			error.path = fullPath
-			val message = error.output(this::translateLoc)
-			System.err.println(message)
+			outputError(error)
 			throw error
 		}
-	}
+
+	//TODO:NAME
+	private fun<T> doWork2(f: Thunk<T>): T =
+		try {
+			f()
+		} catch (error: CompileError) {
+			outputError(error)
+			throw error
+		}
 
 	private fun translateLoc(fullPath: Path, loc: Loc): LcLoc =
 		FileInput.read(io, fullPath) { source ->
@@ -35,15 +47,9 @@ class Compiler(private val io: FileInput) {
 		}
 
 	fun compile(path: Path): Module {
+		fun getModule(path: Path) =
+			modules.get(path)
+		val linearModules = doWork2 { linearizeModuleDependencies(io, path) }
 		TODO()
 	}
 }
-
-private fun compile(getModuleRel: (RelPath) -> Module, path: Path, fullPath: Path, moduleAst: ast.Module): Module {
-	TODO()
-}
-
-
-
-
-

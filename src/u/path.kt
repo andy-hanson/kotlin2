@@ -1,6 +1,6 @@
 package u
 
-class Path(val parts: Arr<Sym>) {
+class Path(private val parts: Arr<Sym>) {
 	companion object {
 		val empty = Path(Arr.empty())
 		fun resolveWithRoot(root: Path, path: Path): Path =
@@ -18,15 +18,15 @@ class Path(val parts: Arr<Sym>) {
 		val nPartsToKeep = parts.size - nParents
 		if (nPartsToKeep < 0)
 			throw Exception("Can't resolve: $rel\nRelative to: $this")
-		val parent = Arr.slice(parts, 0, nPartsToKeep)
-		return Path(Arr.concat(parent, relToParent.parts))
+		val parent = parts.slice(0, nPartsToKeep)
+		return Path(parent.concat(relToParent.parts))
 	}
 
 	fun add(next: Sym): Path =
 		Path(Arr.rcons(parts, next))
 
 	fun parent(): Path =
-		Path(Arr.rtail(parts))
+		Path(parts.rtail())
 
 	val last: Sym
 		get() = parts.last
@@ -36,6 +36,12 @@ class Path(val parts: Arr<Sym>) {
 
 	val isEmpty: Bool
 		get() = parts.isEmpty
+
+	fun directory(): Path =
+		Path(parts.rtail())
+
+	fun directoryAndBasename(): Pair<Path, Sym> =
+		Pair(directory(), last)
 
 	override fun equals(other: Any?) =
 		other is Path && parts.equals(other.parts)

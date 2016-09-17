@@ -86,7 +86,7 @@ private fun Lexer.parseExprWithNext(exprStart: Pos, startToken: Token, ctx: Ctx)
 		val (start, next) = posNext()
 		when (next) {
 			Token.At, Token.AtAt -> {
-				val kind = if (next === Token.At) AtKind.Convert else AtKind.Exact
+				val kind = if (next === Token.At) At.Kind.Convert else At.Kind.Exact
 				val (expr, next) = parseExpr(ctx)
 				val loc = locFrom(exprStart)
 				return ExprRes(At(loc, kind, ty, expr), next)

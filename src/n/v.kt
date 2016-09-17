@@ -31,17 +31,25 @@ sealed class Fn : V() {
 	The backing function for a lambda expression.
 	Actual lambda instances will be partial applications of this.
 	*/
-	class Lambda(val origin: Loc, val body: Expr, val ty: Ft) : Fn()  {
-		var explicitParameters: Arr<LocalDeclare> by Late()
-		var closureParameters: Arr<LocalDeclare> by Late()
+	class Lambda(
+		val origin: Loc,
+		val explicitParameters: Arr<LocalDeclare>,
+		val closureParameters: Arr<LocalDeclare>,
+		val body: Expr,
+		val ty: Ft) : Fn()  {
+
 		var code: Code by Late()
 	}
 
 	/** A builtin function. */
-	data class Builtin(val name: Sym, val ty: FtOrGen, val exec: Exec) : Fn()
+	class Builtin(val name: Sym, val ty: FtOrGen, val exec: Exec) : Fn()
 
 	/** Partial application of any other function. */
-	data class Partial(val partiallyApplied: Fn, val partialArgs: Arr<V>) : Fn()
+	class Partial(val partiallyApplied: Fn, val partialArgs: Arr<V>) : Fn()
+
+	class Ctr(val rt: Rt) : Fn()
+
+	class Instance(val instantiated: Fn, val tyArgs: Arr<Ty>, val ft: Ft) : Fn()
 }
 
 //TODO:MOVE

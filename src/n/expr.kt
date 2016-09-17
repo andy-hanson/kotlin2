@@ -47,6 +47,9 @@ data class LocalAccess(
 	/** Up-pointer to a previously declared local. */
 	val declare: LocalDeclare) : Expr()
 
+/** Direct pointer to a value. This may be a builtin or any other declaration. */
+data class Value(val loc: Loc, val value: V) : Expr()
+
 /** Call any function (whether builtin, declared_fn, or lambda). */
 data class Call(val loc: Loc, val ft: Ft, val target: Expr, val arguments: Arr<Expr>) : Expr()
 
