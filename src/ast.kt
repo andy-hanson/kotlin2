@@ -311,16 +311,14 @@ class Rt(override val loc: Loc, override val name: Sym, val properties: Arr<Prop
 		TODO()
 	override fun toSexpr() =
 		TODO()
+
+	class Property(val loc: Loc, val name: Sym, val ty: Ty) : HasSexpr {
+		override fun toSexpr() =
+			TODO()
+	}
 }
 
-class Property(override val loc: Loc, override val name: Sym, val ty: Ty) : DeclTy() {
-	override fun toString() =
-		TODO()
-	override fun toSexpr() =
-		TODO()
-}
-
-class GenRt(override val loc: Loc, override val name: Sym, val params: Arr<TyParam>, val properties: Arr<Property>) : DeclTy() {
+class GenRt(override val loc: Loc, override val name: Sym, val params: Arr<TyParam>, val properties: Arr<Rt.Property>) : DeclTy() {
 	override fun toString() =
 		TODO()
 	override fun toSexpr() =

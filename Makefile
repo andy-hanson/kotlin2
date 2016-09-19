@@ -1,15 +1,16 @@
 default: run
 
 clean:
-	rm -r doc noze.jar
+	rm -r build .gradle
 
-u.build:
-	kotlinc src -include-runtime -d noze.jar
+build:
+	./gradlew
 
-run: u.build
-	java -jar noze.jar 
+run:
+	# TODO: enableAssertions
+	./gradlew run
 
-doc:
-	java -jar dokka-fatjar.jar src -output doc
+run-jar:
+	java -enableassertions -jar build/libs/shadow-all.jar
 
-.PHONY: clean u.build run doc
+.PHONY: clean build run

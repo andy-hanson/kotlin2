@@ -156,8 +156,19 @@ class Arr<out T> constructor(private val data: Array<out T>) : Iterable<T> {
 
 	fun lazyTail() =
 		lazyDrop(1)
+
 }
 
+inline fun<reified T> Arr<T>.mapIfAnyMaps(crossinline f: (T) -> T?): Arr<T>? {
+	var didReplace = false
+	val mapped = map { element ->
+		val m = f(element)
+		if (m != null)
+			didReplace = true
+		m ?: element
+	}
+	return opIf(!didReplace) { mapped }
+}
 
 inline fun<reified T> Arr<T>.concat(other: Arr<T>) =
 	Arr.init(size + other.size) { i ->

@@ -9,11 +9,19 @@ class Module(
 	/** Actual resolved path, e.g. "a/b.nz" or "a/b/main.nz" */
 	val fullPath: Path,
 	//TODO:DOC
-	val imports: Imports) {
+	val imports: Imports) : HasSexpr {
 	var members: ModuleMembers by Late()
 
 	fun getExport(loc: Loc, name: Sym): ModuleMember =
 		members[name] ?: raise(loc, Err.ModuleHasNoMember(this, name))
+
+	override fun toSexpr() =
+		sexpr("Module") {
+			s(path)
+			s(fullPath)
+			s(lookupSexpr("imports", imports) { k, v -> sexprTuple(k.toSexpr(), v.path) })
+		}
+
 }
 
 typealias ModuleMembers = Lookup<Sym, ModuleMember>
@@ -28,12 +36,9 @@ class Imported(
 	val path: RelPath,
 	val content: ModuleMember)
 
-sealed class ModuleMember {
-	class Ty(val ty: TyOrGen) : ModuleMember()
-	sealed class MemberV : ModuleMember() {
-		// TODO: fn values already carry their type with them, so can we represent this better?
-		data class TypedV(val ty: TyOrGen, val v: V) : MemberV()
-
-		class MemberPy(val py: Py) : MemberV()
-	}
-}
+sealed class ModuleMember
+class MemberTy(val ty: TyOrGen) : ModuleMember()
+sealed class MemberV : ModuleMember()
+// TODO: fn values already carry their type with them, so can we represent this better?
+data class TypedV(val ty: TyOrGen, val v: V) : MemberV()
+class MemberPy(val py: Py) : MemberV()

@@ -5,29 +5,30 @@ import n.*
 import java.util.*
 import compile.*
 import compile.err.*
+import builtin.Builtin
 
 private typealias ModuleTys = Lookup<Sym, TyOrGen>
 
 internal class BaseScope private constructor(
 	internal val moduleTys: ModuleTys,
-	internal val moduleVals: Lookup<Sym, ModuleMember.MemberV>) {
+	internal val moduleVals: Lookup<Sym, MemberV>) {
 	companion object {
 		internal fun get(module: Module): BaseScope {
-			val (moduleTys, moduleVals) = Lookup.build2<Sym, TyOrGen, Sym, ModuleMember.MemberV> { tryAddTy, tryAddVal ->
+			val (moduleTys, moduleVals) = Lookup.build2<Sym, TyOrGen, Sym, MemberV> { tryAddTy, tryAddVal ->
 				fun addTy(loc: Loc, name: Sym, ty: TyOrGen) {
 					if (tryAddTy(name, ty) != null)
 						raise<Unit>(loc, Err.NameAlreadyBound(name))
 				}
-				fun addV(loc: Loc, name: Sym, v: ModuleMember.MemberV) {
+				fun addV(loc: Loc, name: Sym, v: MemberV) {
 					if (tryAddVal(name, v) != null)
 						raise<Unit>(loc, Err.NameAlreadyBound(name))
 				}
 
 				for ((name, import) in module.imports)
 					when (import.content) {
-						is ModuleMember.Ty ->
+						is MemberTy ->
 							addTy(import.loc, name, import.content.ty)
-						is ModuleMember.MemberV ->
+						is MemberV ->
 							addV(import.loc, name, import.content)
 					}
 			}
@@ -41,7 +42,7 @@ internal class BaseScope private constructor(
 
 private class Closure private constructor(val closureVals: HashMap<Sym, LocalDeclare>) {
 	constructor() : this(HashMap())
-	constructor(parameters: Arr<LocalDeclare>) : this(Hm.buildFromValues(parameters) { it.name })
+	constructor(parameters: Arr<LocalDeclare>) : this(Hm.buildFromValues(parameters, LocalDeclare::name))
 
 	// For the outermost function, this will never be written to.
 	val closureHiddenParameters = mutableListOf<LocalDeclare>()
@@ -97,7 +98,7 @@ internal class Scope private constructor(
 	companion object {
 		fun createForFn(base: BaseScope, fn: Fn.Declared): Scope {
 			val localTys =
-				(fn.ty as? FtOrGen.G) opMap { createLocalTys(it.genFt.stuff.params) } ?: Lookup.empty()
+				(fn.ty as? FtOrGen.G) opMap { createLocalTys(it.genFt.tyParams) } ?: Lookup.empty()
 			return Scope(base, localTys).apply {
 				for (param in fn.parameters)
 					addLocal(param)
@@ -112,18 +113,18 @@ internal class Scope private constructor(
 	internal fun getV(loc: Loc, name: Sym): Binding =
 		getVFromClosure(name, closures) opMap { Binding.Local(it) } ?:
 			Binding.Global(base.moduleVals[name] ?:
-				(Builtin.allMembers[name] ?: raise(loc, Err.CantBind(name))) as ModuleMember.MemberV)
+				(Builtin.allMembers[name] ?: raise(loc, Err.CantBind(name))) as MemberV)
 
 	private val moduleTys: ModuleTys
 		get() = base.moduleTys
 
-	internal fun tryGetGen(tyAst: ast.Ty): Gen? =
-		getTyOrGen(moduleTys, localTys, tyAst) as? Gen
+	internal fun tryGetGen(tyAst: ast.Ty): Gen<*>? =
+		getTyOrGen(moduleTys, localTys, tyAst) as? Gen<*>
 
 	internal fun getTy(tyAst: ast.Ty): Ty =
 		getOnlyTy(moduleTys, localTys, tyAst)
 
-	internal fun instantiateGeneric(loc: Loc, gen: Gen, tyArgs: Arr<ast.Ty>): Ty =
+	internal fun instantiateGeneric(loc: Loc, gen: Gen<*>, tyArgs: Arr<ast.Ty>): Ty =
 		instantiateGenericImpl(moduleTys, localTys, loc, gen, tyArgs)
 
 	private fun addLocal(local: LocalDeclare) {
@@ -171,14 +172,8 @@ internal class Scope private constructor(
 
 internal sealed class Binding {
 	// Builtin, import, or another declaration in the same file.
-	class Global(val member: ModuleMember.MemberV) : Binding()
+	class Global(val member: MemberV) : Binding()
 	class Local(val declare: LocalDeclare) : Binding()
-}
-
-//TODO:MOVE
-internal object Builtin {
-	val allMembers: Lookup<Sym, ModuleMember> = TODO()
-	val allIls: Lookup<Py, Lookup<Arr<Ty>, Il>>
 }
 
 private fun getTyOrGen(moduleTys: ModuleTys, localTys: LocalTys, ast: ast.Ty): TyOrGen =
@@ -188,7 +183,7 @@ private fun getTyOrGen(moduleTys: ModuleTys, localTys: LocalTys, ast: ast.Ty): T
 			localTys[name] ?: moduleTys[name] ?: run {
 				//TODO: duplicate code in getV
 				val builtin = Builtin.allMembers[name] ?: raise(loc, Err.CantBind(name))
-				(builtin as ModuleMember.Ty).ty
+				(builtin as MemberTy).ty
 			}
 		}
 		is ast.Ty.Inst -> {
@@ -203,10 +198,10 @@ private fun getOnlyTy(moduleTys: ModuleTys, localTys: LocalTys, tyAst: ast.Ty): 
 	return ty as? Ty ?: TODO("fail with some message")
 }
 
-private fun getOnlyGen(moduleTys: ModuleTys, localTys: LocalTys, tyAst: ast.Ty): Gen {
+private fun getOnlyGen(moduleTys: ModuleTys, localTys: LocalTys, tyAst: ast.Ty): Gen<*> {
 	val ty = getTyOrGen(moduleTys, localTys, tyAst)
-	return ty as? Gen ?: TODO("fail with some message")
+	return ty as? Gen<*> ?: TODO("fail with some message")
 }
 
-private fun instantiateGenericImpl(moduleTys: ModuleTys, localTys: LocalTys, loc: Loc, gen: Gen, tyArgs: Arr<ast.Ty>) =
+private fun instantiateGenericImpl(moduleTys: ModuleTys, localTys: LocalTys, loc: Loc, gen: Gen<*>, tyArgs: Arr<ast.Ty>) =
 	instantiateGeneric(loc, gen, tyArgs.map { getOnlyTy(moduleTys, localTys, it) })

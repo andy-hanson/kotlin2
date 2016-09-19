@@ -1,0 +1,52 @@
+buildscript {
+	ext.kotlin_version = '1.1-M01'
+	repositories {
+		mavenCentral()
+		maven {
+				url  "http://dl.bintray.com/kotlin/kotlin-eap-1.1"
+		}
+	}
+	dependencies {
+		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+	}
+}
+plugins {
+	// Documentation: http://imperceptiblethoughts.com/shadow/
+	id 'com.github.johnrengelman.shadow' version '1.2.3'
+}
+
+apply plugin: 'kotlin'
+apply plugin: 'application'
+
+sourceSets.main.kotlin.srcDirs = ['src']
+
+// end
+
+mainClassName = 'cli.AppKt'
+
+defaultTasks 'shadow'
+
+repositories {
+	mavenCentral()
+	flatDir {
+		dirs 'lib'
+	}
+}
+
+dependencies {
+	def kotlin_lib_version = '1.0.3' // Doesn't yet exist for 1.1
+	compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_lib_version"
+	compile "org.objectweb.asm:asm:5.1"
+	compile "org.objectweb.asm:asm-util:5.1"
+
+	testCompile 'junit:junit:4.11'
+	testCompile "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
+}
+
+task wrapper(type: Wrapper) {
+	gradleVersion = "2.7"
+}
+
+shadowJar {
+	baseName = 'shadow'
+}

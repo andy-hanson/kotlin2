@@ -15,7 +15,7 @@ internal data class LinearizedModule(val logicalPath: Path, val fullPath: Path, 
 
 internal fun linearizeModuleDependencies(io: FileInput, startPath: Path): Arr<LinearizedModule> {
 	val f = Floof(io)
-	f.floof(Path.empty, zeroLoc, RelPath(0, startPath))
+	f.floof(Path.empty, Loc.zero, RelPath(0, startPath))
 	return f.finish()
 }
 
@@ -27,7 +27,7 @@ private class Floof(private val io: FileInput) {
 
 	fun floof(from: Path, fromLoc: Loc, rel: RelPath) {
 		val path = from.resolve(rel)
-		if (map.containsKey(path))
+		if (path in map)
 			raiseWithPath(from, fromLoc, Err.CircularDepdendency(path))
 		else {
 			val (fullPath, source) = resolve(io, from, fromLoc, rel)
@@ -72,7 +72,7 @@ private class Foo(val imports: Arr<Bar>, val ast: ast.Module)
 private class Bar(val loc: Loc, val rel: RelPath)
 
 private val extension = ".nz"
-private val mainNz = Sym.ofString("main$extension")
+private val mainNz = "main$extension".sym
 
 private fun attempt(io: FileInput, path: Path): Resolved? =
 	try {
@@ -99,7 +99,7 @@ private fun resolve(io: FileInput, from: Path, fromLoc: Loc, rel: RelPath): Reso
 		attemptMain() ?: raiseErr(Err.CantFindLocalModuleFromDirectory(rel, mainPath))
 	else {
 		val (pre, last) = base.directoryAndBasename()
-		val regularPath = pre.add(Sym.ofString(last.toString() + extension))
+		val regularPath = pre.add((last.toString() + extension).sym)
 		attempt(regularPath) ?: attemptMain() ?:
 			raiseErr(Err.CantFindLocalModuleFromFileOrDirectory(rel, regularPath, mainPath))
 	}

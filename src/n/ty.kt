@@ -14,45 +14,61 @@ sealed class TyOrGen
 /** A concrete type. */
 sealed class Ty : TyOrGen()
 
-sealed class Prim : Ty() {
-	object Bool : Prim()
-	object Float : Prim()
-	object Int : Prim()
-	object String : Prim()
-	object Void : Prim()
+sealed class Prim(nameStr: String) : Ty() {
+	val name: Sym = nameStr.sym
+
+	object Bool : Prim("Bool")
+	object Float : Prim("Float")
+	object Int : Prim("Int")
+	object Str : Prim("String")
+	object Void : Prim("Void")
 	/** Dummy value. There is no 'nil' type. */
-	object Nil : Prim()
+	object Nil : Prim("Nil")
 }
 
+
+interface GenInstOrigin {
+	val gen: Gen<*>
+	val instWith: Arr<Ty>
+}
 
 /**
 Instance of a GenPrim.
 Do not directly construct this. Instead use instantiate_gen_prim.
 */
-class PrimInst(val gen: GenPrim, val instWith: Arr<Ty>) : Ty()
+class PrimInst(override val gen: GenPrim, override val instWith: Arr<Ty>) : Ty(), GenInstOrigin
 
-class Rt(val origin: Origin, val properties: Arr<Property>) : Ty() {
+class Rt(val origin: Origin) : Ty() {
+	var properties: Arr<Property> by Late()
+
 	sealed class Origin {
 		//TODO: Rt, Vt, Ft have these two origins in common.
 		class Builtin(val name: Sym) : Origin()
 		class Decl(val origin: CodeOrigin) : Origin()
-		class GenInst(val gen: GenRt, val tys: Arr<Ty>) : Origin()
+		data class GenInst(override val gen: GenRt, override val instWith: Arr<Ty>) : Origin(), GenInstOrigin
 	}
 
 	class Property(val name: Sym, val ty: Ty)
 }
 
 class Vt(val origin: Origin) : Ty() {
-	var tys: Arr<Ty> by Late()
+	var variants: Arr<Ty> by Late()
 
 	sealed class Origin {
-		class Builtin(val name: Sym)
-		class Decl(val origin: CodeOrigin)
-		class GenInst(val gen: GenVt, val tys: Arr<Ty>) : Origin()
+		class Builtin(val name: Sym) : Origin()
+		class Decl(val origin: CodeOrigin) : Origin()
+		class GenInst(override val gen: GenVt, override val instWith: Arr<Ty>) : Origin(), GenInstOrigin
 	}
 }
 
-class Ft : Ty() {
+class Ft() : Ty() {
+	constructor(origin: Origin) : this() {
+		this.origin = origin
+	}
+	constructor(origin: Origin, signature: Signature) : this(origin) {
+		this.signature = signature
+	}
+
 	var origin: Origin by Late()
 	var signature: Signature by Late()
 
@@ -64,7 +80,7 @@ class Ft : Ty() {
 		class FromBuiltinFn(val fn: Fn.Builtin) : Origin()
 		class FromRt(val rt: Rt) : Origin()
 		class FromPartial(val partiallyApplied: Ft) : Origin()
-		class GenInst(val gen: GenFt, val tys: Arr<Ty>) : Origin()
+		class GenInst(override val gen: GenFt, override val instWith: Arr<Ty>) : Origin(), GenInstOrigin
 	}
 
 	class Parameter(val name: Sym, val ty: Ty)
@@ -77,27 +93,32 @@ sealed class GenVar : Ty() {
 	class Declared(val origin: CodeOrigin) : GenVar()
 }
 
-sealed class Gen() : TyOrGen()
+sealed class Gen<Concrete>(val tyParams: Arr<GenVar>) : TyOrGen() {
+	val cache = HashMap<Arr<Ty>, Concrete>()
+}
 
 /** Generic primitive. */
-sealed class GenPrim(val stuff: GenStuff<PrimInst>) : Gen() {
-	object List : GenPrim(GenStuff(Arr.of(GenVar.Builtin(Sym.ofString("A")))))
+sealed class GenPrim(params: Arr<GenVar>) : Gen<PrimInst>(params) {
+	object List : GenPrim(Arr.of(GenVar.Builtin("Element".sym)))
 
 }
 
-class GenRt(
-	val origin: CodeOrigin,
-	val stuff: GenStuff<Rt>) : Gen() {
+class GenRt(val origin: CodeOrigin, params: Arr<GenVar>) : Gen<Rt>(params) {
 	var properties: Arr<Rt.Property> by Late()
 }
 
-class GenVt(
-	val origin: CodeOrigin,
-	val stuff: GenStuff<Vt>) : Gen() {
-	var tys: Arr<Ty> by Late()
+class GenVt(val origin: CodeOrigin, params: Arr<GenVar>) : Gen<Vt>(params) {
+	var variants: Arr<Ty> by Late()
 }
 
-class GenFt(val stuff: GenStuff<Ft>) : Gen() {
+class GenFt(params: Arr<GenVar>) : Gen<Ft>(params) {
+	constructor(params: Arr<GenVar>, origin: Origin) : this(params) {
+		this.origin = origin
+	}
+	constructor(params: Arr<GenVar>, origin: Origin, signature: Ft.Signature): this(params, origin) {
+		this.signature = signature
+	}
+
 	var origin: Origin by Late()
 	var signature: Ft.Signature by Late()
 
@@ -111,10 +132,6 @@ class GenFt(val stuff: GenStuff<Ft>) : Gen() {
 	}
 }
 
-// Values associated with every generic. 'a is the concrete type.
-class GenStuff<Concrete>(val params: Arr<GenVar>) {
-	val cache = HashMap<Arr<Ty>, Concrete>()
-}
 
 
 //TODO: would like to use a sealed interface...

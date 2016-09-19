@@ -5,7 +5,6 @@ import n.*
 
 //TODO: this file, man, this file!
 
-internal fun<T> createGenStuffFromParamAsts(module: Module, params: Arr<ast.TyParam>): GenStuff<T> =
-	GenStuff(params.map {
-		GenVar.Declared(CodeOrigin(module, it.loc, it.name))
-	})
+//TODO:RENAME
+internal fun createGenStuffFromParamAsts(module: Module, params: Arr<ast.TyParam>): Arr<GenVar> =
+	params.map { GenVar.Declared(CodeOrigin(module, it.loc, it.name)) }

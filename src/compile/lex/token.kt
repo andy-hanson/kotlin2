@@ -21,7 +21,7 @@ sealed class Token {
 	}
 
 	abstract class Kw(name: String) : Token() {
-		val name = Sym.ofString(name)
+		val name = name.sym
 
 		override fun toString() =
 			name.toString()

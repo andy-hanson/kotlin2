@@ -19,7 +19,7 @@ class Lexer(private val source: Input) {
 		pos
 
 	fun locFrom(start: Pos): Loc =
-		makeLoc(start, pos)
+		Loc(start, pos)
 
 	private fun incrPos() {
 		pos = pos.incr()
@@ -29,7 +29,7 @@ class Lexer(private val source: Input) {
 		source.readChar()
 
 	private fun readChar(): Char =
-		peek.apply {
+		returning(peek) {
 			peek = read()
 			incrPos()
 		}
@@ -110,7 +110,7 @@ class Lexer(private val source: Input) {
 				if (isFloat) {
 					skip()
 					addChar('.')
-					must(isDigit(peek), singleCharLoc(pos), Err.TooMuchIndent)
+					must(isDigit(peek), Loc.singleChar(pos), Err.TooMuchIndent)
 					bufferWhile(addChar, ::isDigit)
 				}
 			}
@@ -132,7 +132,7 @@ class Lexer(private val source: Input) {
 			addChar(first)
 			bufferWhile(addChar, pred)
 		}
-		val name = Sym.ofString(text)
+		val name = text.sym
 		return Token.opKeyword(name) ?: makeToken(name)
 	}
 
@@ -161,7 +161,7 @@ class Lexer(private val source: Input) {
 		indent = lexIndent()
 		return when {
 			indent > oldIndent -> {
-				must(indent == oldIndent + 1, singleCharLoc(pos), Err.TooMuchIndent)
+				must(indent == oldIndent + 1, Loc.singleChar(pos), Err.TooMuchIndent)
 				Token.Indent
 			}
 			indent == oldIndent ->
@@ -197,7 +197,7 @@ class Lexer(private val source: Input) {
 			}
 
 			' ' -> {
-				must(peek != '\n', singleCharLoc(pos), Err.TrailingSpace)
+				must(peek != '\n', Loc.singleChar(pos), Err.TrailingSpace)
 				takeNext()
 			}
 
@@ -255,7 +255,7 @@ class Lexer(private val source: Input) {
 				takeOperator(ch)
 
 			else ->
-				raise(singleCharLoc(pos), Err.UnrecognizedCharacter(ch))
+				raise(Loc.singleChar(pos), Err.UnrecognizedCharacter(ch))
 		}
 	}
 

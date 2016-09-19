@@ -7,12 +7,10 @@ import n.*
 
 //TODO: This *must* be cached! Same for ft_of_rt_ctr!
 private fun genFtOfGenRtCtr(genRt: GenRt): GenFt {
-	val tyParams = genRt.stuff.params
-	return GenFt(GenStuff(tyParams)).apply {
-		origin = GenFt.Origin.FromGenRt(genRt)
-		val params = genRt.properties.map { Ft.Parameter(it.name, it.ty) }
-		signature = Ft.Signature(instantiateGenRt(genRt, tyParams), params)
-	}
+	val tyParams = genRt.tyParams
+	val params = genRt.properties.map { Ft.Parameter(it.name, it.ty) }
+	val signature = Ft.Signature(instantiateGenRt(genRt, tyParams), params)
+	return GenFt(tyParams, GenFt.Origin.FromGenRt(genRt), signature)
 }
 
 private sealed class CallKind {
@@ -25,9 +23,9 @@ private sealed class CallKind {
 //TODO:NEATER
 private fun inferGenericCall(scope: Scope, loc: Loc, expected: Expected, called: Fn, calledTy: GenFt, argAsts: Arr<ast.Expr>): Expr {
 	val (genericArguments, args) = inferGenericCallWorker(scope, loc, expected, calledTy, argAsts)
-	val (fn, ft) = instantiateFn(called, genericArguments)
-	val expr = Call(loc, ft, Value(loc, fn), args)
-	return checkAny(loc, expected, ft.signature.returnTy, expr)
+	val fn = instantiateFn(called, genericArguments)
+	val expr = Call(loc, fn.ft, Value(loc, fn), args)
+	return checkAny(loc, expected, fn.ft.signature.returnTy, expr)
 }
 
 // Remember, genReturnTy may contain un-inferrable variables.
@@ -38,7 +36,7 @@ private fun inferGenericsFromExpected(genReturnTy: Ty, inferring: Arr<GenVarInfe
 //TODO:REFACTOR
 //Returns, inferred generic arguments, and argument expressions
 private fun inferGenericCallWorker(scope: Scope, loc: Loc, expected: Expected, calledTy: GenFt, argAsts: Arr<ast.Expr>): Pair<Arr<Ty>, Arr<Expr>> {
-	val inferring = calledTy.stuff.params.map { GenVarInferring(it) }
+	val inferring = calledTy.tyParams.map { GenVarInferring(it) }
 	inferGenericsFromExpected(calledTy.signature.returnTy, inferring, expected)
 	val args = calledTy.signature.parameters.zip(argAsts) { param, argAst ->
 		checkWorker(scope, Expected.InferGeneric(inferring, param.ty), argAst)
@@ -65,9 +63,9 @@ private fun getCallKind(scope: Scope, ast: ast.Expr): CallKind =
 				is Binding.Global -> {
 					val memberV = got.member
 					when (memberV) {
-						is ModuleMember.MemberV.MemberPy ->
+						is MemberPy ->
 							CallKind.CallPy(memberV.py)
-						is ModuleMember.MemberV.TypedV -> {
+						is TypedV -> {
 							val (tyOrGen, value) = memberV
 							when (tyOrGen) {
 								is GenFt ->

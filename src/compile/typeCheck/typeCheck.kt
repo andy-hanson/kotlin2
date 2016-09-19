@@ -71,7 +71,7 @@ internal fun checkWorker(scope: Scope, expected: Expected, xast: ast.Expr): Expr
 			val (ty, expr) =
 				when (v) {
 					is Binding.Global -> {
-						val (tyOrGen, value) = v.member as? ModuleMember.MemberV.TypedV ?: TODO("error message: can't have a py here")
+						val (tyOrGen, value) = v.member as? TypedV ?: TODO("error message: can't have a py here")
 						val ty = tyOrGen as? Ty ?: TODO("error message: can't have a generic here")
 						Pair(ty, Value(xast.loc, value))
 					}
@@ -102,10 +102,9 @@ internal fun checkWorker(scope: Scope, expected: Expected, xast: ast.Expr): Expr
 			val (body, closureParameters) = scope.inClosure(parameters) {
 				checkImplicitCast(scope, returnTy, bodyAst)
 			}
-			val ft = Ft().apply {
-				origin = Ft.Origin.Lambda(loc)
-				signature = Ft.Signature(returnTy, parameters.map { param -> Ft.Parameter(param.name, param.ty) })
-			}
+			val ft = Ft(
+				Ft.Origin.Lambda(loc),
+				Ft.Signature(returnTy, parameters.map { param -> Ft.Parameter(param.name, param.ty) }))
 			val lambda =
 				Fn.Lambda(loc, parameters, closureParameters, body, ft)
 			checkAny(loc, expected, ft, Lambda(lambda))
@@ -127,7 +126,7 @@ internal fun checkWorker(scope: Scope, expected: Expected, xast: ast.Expr): Expr
 					is Expected.ImplicitCast -> {
 						val ty = expected.ty as? PrimInst ?: TODO("not a list")
 						if (ty.gen == GenPrim.List) TODO("not a list")
-						val elementTy = expected.ty.gen.stuff.params.single()
+						val elementTy = expected.ty.gen.tyParams.single()
 						elementAsts.map { checkImplicitCast(scope, elementTy, it) }
 					}
 					is Expected.Infer -> {
@@ -152,7 +151,7 @@ internal fun checkWorker(scope: Scope, expected: Expected, xast: ast.Expr): Expr
 				when (v) {
 					is ast.LiteralValue.Int -> Pair(Prim.Int, V.Prim.Int(v.value))
 					is ast.LiteralValue.Float -> Pair(Prim.Float, V.Prim.Float(v.value))
-					is ast.LiteralValue.Str -> Pair(Prim.String, V.Prim.String(v.value))
+					is ast.LiteralValue.Str -> Pair(Prim.Str, V.Prim.String(v.value))
 				}
 			checkAny(xast.loc, expected, ty, Value(xast.loc, value))
 		}
@@ -176,10 +175,10 @@ internal fun checkWorker(scope: Scope, expected: Expected, xast: ast.Expr): Expr
 		is ast.Quote -> {
 			val (loc, head, partAsts) = xast
 			val parts = partAsts.map { part ->
-				val interpolated = checkImplicitCast(scope, Prim.String, part.interpolated)
+				val interpolated = checkImplicitCast(scope, Prim.Str, part.interpolated)
 				Quote.Part(interpolated, part.text)
 			}
-			checkAny(loc, expected, Prim.String, Quote(loc, head, parts))
+			checkAny(loc, expected, Prim.Str, Quote(loc, head, parts))
 		}
 
 		is ast.Check -> {
@@ -200,7 +199,7 @@ private fun genInst(scope: Scope, loc: Loc, name: Sym, tyAsts: Arr<ast.Ty>): Pai
 	val global = binding as? Binding.Global ?: TODO("error message: can't instantiate local")
 	val memberV = global.member
 	return when (memberV) {
-		is ModuleMember.MemberV.MemberPy -> {
+		is MemberPy -> {
 			val py = memberV.py
 			val il = scope.getPyImpl(loc, py, tyAsts.map(scope::getTy))
 			val ft = il.ft()
@@ -208,9 +207,9 @@ private fun genInst(scope: Scope, loc: Loc, name: Sym, tyAsts: Arr<ast.Ty>): Pai
 			val expr = Value(loc, il.fn)
 			Pair(ft, expr)
 		}
-		is ModuleMember.MemberV.TypedV -> {
+		is TypedV -> {
 			val (tyOrGen, value) = memberV
-			val genTy = tyOrGen as? Gen ?: TODO("error message: not instantiable")
+			val genTy = tyOrGen as? Gen<*> ?: TODO("error message: not instantiable")
 			val ty = scope.instantiateGeneric(loc, genTy, tyAsts)
 			Pair(ty, Value(loc, value))
 		}
@@ -220,7 +219,7 @@ private fun genInst(scope: Scope, loc: Loc, name: Sym, tyAsts: Arr<ast.Ty>): Pai
 private fun checkCs(scope: Scope, expected: Expected, ast: ast.Cs): Expr {
 	val (casedTy, cased) = checkAndInfer(scope, ast.cased)
 	val casedVt = casedTy as? Vt ?: raise(ast.cased.loc, Err.CanOnlyCsVt(casedTy))
-	val remainingTys = mutableListFrom(casedVt.tys)
+	val remainingTys = mutableListFrom(casedVt.variants)
 	val parts = ast.parts.map { part ->
 		val (partLoc, test, resultAst) = part
 		val (testLoc, testTyAst, patternAst) = test

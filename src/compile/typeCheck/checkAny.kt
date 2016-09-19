@@ -66,7 +66,7 @@ private fun assertWithGenVars(inferring: Arr<GenVarInferring>, loc: Loc, expecte
 				is Vt ->
 					assertConvertVt(inferring, loc, expected, actual)
 				is Prim, is PrimInst, is Rt, is Ft ->
-					expected.tys.findIndex { isExact(inferring, it, actual) } opMap { Conversion.Vv(expected, it) } ?: fail()
+					expected.variants.findIndex { isExact(inferring, it, actual) } opMap { Conversion.Vv(expected, it) } ?: fail()
 				is GenVar ->
 					TODO()
 			}

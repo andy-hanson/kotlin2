@@ -1,34 +1,31 @@
 package u
 
-typealias Loc = Long
-typealias Pos = Int
+class Loc(val start: Pos, val end: Pos) : HasSexpr {
+	companion object {
+		fun singleChar(start: Pos) =
+			Loc(start, start + 1)
 
-fun makeLoc(a: Pos, b: Pos): Loc {
-	return (a.toLong() shl 32) or b.toLong()
+		val zero = Loc(0, 0)
+		val nil = Loc(-1, -1)
+	}
+
+	override fun toSexpr() =
+		sexprTuple(Sexpr(start), Sexpr(end))
 }
 
-fun singleCharLoc(a: Pos): Loc =
-	makeLoc(a, a + 1)
-
-fun Loc.start(): Pos =
-	(this ushr 32).toInt()
-
-fun Loc.end(): Pos =
-	this.toInt()
+typealias Pos = Int
 
 fun Pos.incr(): Pos =
 	this + 1
 
 val startPos: Pos = 0
-val nilLoc: Loc = -1
-val zeroLoc: Loc = 0
 
 class LcPos(val line: Int, val column: Int)
 class LcLoc(val start: LcPos, val end: LcPos) {
 	companion object {
 		fun from(source: Input, loc: Loc): LcLoc {
-			val start = walkTo(source, startLc, loc.start())
-			val end = walkTo(source, start, loc.end() - loc.start())
+			val start = walkTo(source, startLc, loc.start)
+			val end = walkTo(source, start, loc.end- loc.start)
 			return LcLoc(start, end)
 		}
 	}

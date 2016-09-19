@@ -36,6 +36,11 @@ object Hm {
 		}
 }
 
+fun<K, V> HashMap<K, V>.add(key: K, value: V) {
+	require(key !in this)
+	this[key] = value
+}
+
 fun<K, V> HashMap<K, V>.addOr(key: K, value: V, f: Action<V>) {
 	val old = tryAdd(key, value)
 	if (old != null)
@@ -49,7 +54,7 @@ fun<K, V> HashMap<K, V>.tryAdd(key: K, value: V): V? =
 	}
 
 fun<K, V> HashMap<K, V>.surelyRemove(key: K) {
-	require(containsKey(key))
+	require(key in this)
 	remove(key)
 }
 
@@ -78,13 +83,45 @@ class Lookup<K, V> private constructor(private val data: HashMap<K, V>) : Iterab
 
 		fun<K, V> fromValues(values: Arr<V>, getKey: (V) -> K) =
 			Lookup(Hm.buildFromValues(values, getKey))
+
+		fun<A, K, V> buildFromArr(arr: Arr<A>, getPair: (Int, A) -> Pair<K, V>): Lookup<K, V> =
+			buildWithSize(arr.size) { tryAdd ->
+				for ((index, element) in arr.withIndex()) {
+					val (k, v) = getPair(index, element)
+					if (tryAdd(k, v) != null)
+						throw Error("Key already in map")
+				}
+			}
+
+		fun<K, V> buildFromKeysWithIndex(keys: Arr<K>, getValue: (Int, K) -> V): Lookup<K, V> =
+			buildFromArr(keys) { i, key -> key to getValue(i, key) }
+
+		fun<K, V> ofKeysAndValues(keys: Arr<K>, values: Arr<V>): Lookup<K, V> {
+			require(keys.sameSize(values))
+			return buildFromArr(keys) { i, key -> key to values[i] }
+		}
+
+		fun<K, V> fromHashMap(hm: HashMap<K, V>): Lookup<K, V> =
+			fromHashMapMapped(hm) { k, v -> Pair(k, v) }
+
+		fun<K1, V1, K2, V2> fromHashMapMapped(hm: HashMap<K1, V1>, map: (K1, V1) -> Pair<K2, V2>): Lookup<K2, V2> =
+			buildWithSize(hm.size) { tryAdd ->
+				for ((k, v) in hm) {
+					val (mappedK, mappedV) = map(k, v)
+					val old = tryAdd(mappedK, mappedV)
+					assert(old == null)
+				}
+			}
 	}
 
 	operator fun get(key: K): V? =
 		data[key]
 
-	fun has(key: K): Bool =
-		data.containsKey(key)
+	fun mustGet(key: K): V =
+		this[key]!!
+
+	operator fun contains(key: K): Bool =
+		key in data
 
 	fun keys(): Arr<K> =
 		TODO()
@@ -100,3 +137,9 @@ class Lookup<K, V> private constructor(private val data: HashMap<K, V>) : Iterab
 			}
 		}
 }
+
+fun<K, V> lookupSexpr(name: String, lookup: Lookup<K, V>, map: (K, V) -> Sexpr) =
+	sexpr(name) {
+		for ((key, value) in lookup)
+			s(map(key, value))
+	}

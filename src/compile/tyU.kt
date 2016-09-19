@@ -11,8 +11,5 @@ internal fun ftOfRtCtr(rt: Rt): Ft {
 
 internal fun partiallyApplyFt(ft: Ft, nPartialArgs: Int): Ft {
 	val parameters = ft.signature.parameters.rtailN(nPartialArgs)
-	return Ft().apply {
-		origin = Ft.Origin.FromPartial(ft)
-		signature = ft.signature.copy(parameters = parameters)
-	}
+	return Ft(Ft.Origin.FromPartial(ft), ft.signature.copy(parameters = parameters))
 }

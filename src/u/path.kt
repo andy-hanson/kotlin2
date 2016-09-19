@@ -1,14 +1,17 @@
 package u
 
-class Path(private val parts: Arr<Sym>) {
+class Path(private val parts: Arr<Sym>) : HasSexpr {
 	companion object {
 		val empty = Path(Arr.empty())
 		fun resolveWithRoot(root: Path, path: Path): Path =
 			root.resolve(RelPath(0, path))
 
-		fun of(vararg elements: String): Path =
-			Path(Arr.fromMappedArray<String, Sym>(elements) { Sym.ofString(it) }) //TODO: Sym::ofString
+		operator fun invoke(vararg elements: String): Path =
+			Path(Arr.fromMappedArray<String, Sym>(elements) { it.sym }) //TODO: Sym::ofString
 	}
+
+	override fun toSexpr() =
+		Sexpr(parts)
 
 	override fun toString() =
 		parts.joinToString("/")
@@ -51,7 +54,7 @@ class Path(private val parts: Arr<Sym>) {
 }
 
 // # of parents, then a path relative to the ancestor
-data class RelPath(val nParents: Int, val relToParent: Path) {
+data class RelPath(val nParents: Int, val relToParent: Path) : HasSexpr {
 	override fun toString(): String {
 		val start =
 			when (nParents) {
@@ -61,6 +64,8 @@ data class RelPath(val nParents: Int, val relToParent: Path) {
 			}
 		return start + relToParent.toString()
 	}
+
+	override fun toSexpr() = sexprTuple(Sexpr(nParents), relToParent)
 
 	val isParentsOnly: Bool
 		get() = relToParent.isEmpty

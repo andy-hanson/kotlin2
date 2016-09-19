@@ -1,6 +1,14 @@
 package u
 
 sealed class Sexpr : HasSexpr {
+	companion object {
+		operator fun invoke(x: Arr<HasSexpr>) =
+			Compound.List(x.map { it.toSexpr() })
+
+		operator fun invoke(n: Int) =
+			N(n.toLong())
+	}
+
 	override fun toString(): String {
 		val sb = StringBuilder()
 		show(0, sb)
@@ -141,7 +149,7 @@ class SexprBuilder(val name: String) {
 	fun s(name: Sym) {
 		parts.add(Sexpr.S(name))
 	}
-	fun s(name: String) { s(Sym.ofString(name)) }
+	fun s(name: String) { s(name.sym) }
 
 	fun s(obj: HasSexpr) {
 		parts.add(obj.toSexpr())

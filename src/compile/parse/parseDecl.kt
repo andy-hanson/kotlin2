@@ -24,7 +24,7 @@ private fun Lexer.parseRt(start: Pos): DeclTy {
 		val start = curPos()
 		val name = parseName()
 		val (ty, cont) = parseTyThenNewlineOrDedent()
-		val prop = Property(locFrom(start), name, ty)
+		val prop = Rt.Property(locFrom(start), name, ty)
 		Pair(prop, cont)
 	}
 	val loc = locFrom(start)

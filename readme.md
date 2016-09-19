@@ -1,12 +1,20 @@
+## Setup IntelliJ
 
-## Build
+It is easiest to run using [IntelliJ IDEA](https://www.jetbrains.com/idea/).
 
-Install kotlin using [these](https://kotlinlang.org/docs/tutorials/command-line.html) instructions,
-but run `sdk install kotlin 1.1-M01` instead of just `sdk install kotlin`.
-(See the blog post [here](https://blog.jetbrains.com/kotlin/2016/07/first-glimpse-of-kotlin-1-1-coroutines-type-aliases-and-more/).)
-Then `make run`.
+Install kotlin 1.1 using [these](https://kotlinlang.org/docs/tutorials/command-line.html) instructions.
 
-## Document
+You'll also need to add the `libs` directory as a depencency, following [these](https://stackoverflow.com/questions/1051640/correct-way-to-add-external-jars-lib-jar-to-an-intellij-idea-project#1051705) instructions.
 
-Install [dokka](https://github.com/Kotlin/dokka/blob/master/README.md).
-Then `make doc`.
+Then run `cli/app.kt`. Remember to add the `-enableassertions` VM option.
+
+
+## Building executable JAR
+
+	`make build` makes a JAR and `make run-ar` runs it. There should be no classpath needed.
+
+
+## Running with gradle
+
+	You can also use `make run` to directly run the project. This does not yet support assertions.
+

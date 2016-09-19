@@ -22,7 +22,7 @@ internal fun writeNilDeclarations(module: Module, decls: Arr<ast.Decl>): Pair<Ar
 					is ast.DeclTy -> {
 						val ty = nilOfAst(module, decl)
 						addTy(TyAndAst(decl, ty))
-						build(decl.name, ModuleMember.Ty(ty))
+						build(decl.name, MemberTy(ty))
 					}
 				}
 			}

@@ -170,6 +170,10 @@ sealed class Err {
 
 
 class CompileError(val loc: Loc, val kind: Err) : Exception() {
+	constructor(loc: Loc, kind: Err, path: Path) : this(loc, kind) {
+		this.path = path
+	}
+
 	var path: Path by Late()
 
 	fun output(translateLoc: (Path, Loc) -> LcLoc): String {

@@ -7,7 +7,7 @@ private val table = WeakHashMap<String, Sym>()
 
 class Sym private constructor(private val str: String) : HasSexpr {
 	companion object {
-		fun ofString(s: String): Sym {
+		fun symOfString(s: String): Sym {
 			val entry = table[s]
 			if (entry == null) {
 				val sym = Sym(s)
@@ -27,3 +27,6 @@ class Sym private constructor(private val str: String) : HasSexpr {
 	fun mod(f: (String) -> String) =
 		Sym(f(str))
 }
+
+val String.sym: Sym
+	get() = Sym.symOfString(this)

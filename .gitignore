@@ -1,6 +1,5 @@
-doc
-dokka-fatjar.jar
-noze.jar
+build
 out
-target
-test-nz
+.gradle
+.idea
+*.iml
